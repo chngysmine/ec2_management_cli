@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Volumes</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 24px; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #ddd; padding: 8px; }
+      th { background: #f5f5f5; text-align: left; }
+      form { display: inline; }
+    </style>
+  </head>
+  <body>
+    <h2>Volumes</h2>
+    <p><a href="/">Home</a></p>
+    <table>
+      <thead>
+        <tr>
+          <th>VolumeId</th>
+          <th>SizeGiB</th>
+          <th>State</th>
+          <th>Type</th>
+          <th>Iops</th>
+          <th>Throughput</th>
+          <th>AZ</th>
+          <th>AttachedInstances</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in volumes %}
+        <tr>
+          <td>{{ v.VolumeId }}</td>
+          <td>{{ v.SizeGiB }}</td>
+          <td>{{ v.State }}</td>
+          <td>{{ v.VolumeType }}</td>
+          <td>{{ v.Iops }}</td>
+          <td>{{ v.Throughput }}</td>
+          <td>{{ v.AvailabilityZone }}</td>
+          <td>{{ ', '.join(v.AttachedInstances) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </body>
+  </html>
+
+
+
+
+

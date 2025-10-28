@@ -1,0 +1,16 @@
+README.md
+setup.py
+ec2_manager/__init__.py
+ec2_manager/cli.py
+ec2_manager/core.py
+ec2_manager/exceptions.py
+ec2_manager/utils.py
+ec2_manager/web.py
+ec2_manager/web_flask.py
+ec2_manager.egg-info/PKG-INFO
+ec2_manager.egg-info/SOURCES.txt
+ec2_manager.egg-info/dependency_links.txt
+ec2_manager.egg-info/entry_points.txt
+ec2_manager.egg-info/not-zip-safe
+ec2_manager.egg-info/requires.txt
+ec2_manager.egg-info/top_level.txt

@@ -1,0 +1,31 @@
+# Example configuration for a development web server
+# Owner: dev-team-a
+instance:
+  ImageId: "ami-0abcdef1234567890"
+  InstanceType: "t4g.medium"
+  KeyName: "dev-key-us-east-1"
+  MinCount: 1
+  MaxCount: 1
+
+network:
+  SubnetId: "subnet-0123456789abcdef"
+  SecurityGroupIds:
+    - "sg-0abcdef1234567890"
+
+user_data: |
+  #!/bin/bash
+  yum update -y
+  yum install -y nginx
+  systemctl start nginx
+  systemctl enable nginx
+
+tags:
+  - Key: "Name"
+    Value: "dev-web-server"
+  - Key: "Environment"
+    Value: "Development"
+  - Key: "CostCenter"
+    Value: "CC-DEV-001"
+
+
+

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Instances</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 24px; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #ddd; padding: 8px; }
+      th { background: #f5f5f5; text-align: left; }
+      form { display: inline; }
+      .actions button { margin-right: 6px; }
+    </style>
+  </head>
+  <body>
+    <h2>Instances</h2>
+    <p><a href="/">Home</a></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Account</th>
+          <th>InstanceId</th>
+          <th>Type</th>
+          <th>State</th>
+          <th>AZ</th>
+          <th>Private IP</th>
+          <th>Public IP</th>
+          <th>Name</th>
+          <th>LaunchTime</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in instances %}
+        <tr>
+          <td>{{ i.AccountId }}</td>
+          <td>{{ i.InstanceId }}</td>
+          <td>{{ i.InstanceType }}</td>
+          <td>{{ i.State }}</td>
+          <td>{{ i.AvailabilityZone }}</td>
+          <td>{{ i.PrivateIpAddress }}</td>
+          <td>{{ i.PublicIpAddress }}</td>
+          <td>{{ i.NameTag }}</td>
+          <td>{{ i.LaunchTime }}</td>
+          <td class="actions">
+            <form method="post" action="/instances/start">
+              <input type="hidden" name="instance_id" value="{{ i.InstanceId }}" />
+              <button type="submit">Start</button>
+            </form>
+            <form method="post" action="/instances/stop">
+              <input type="hidden" name="instance_id" value="{{ i.InstanceId }}" />
+              <button type="submit">Stop</button>
+            </form>
+            <form method="post" action="/instances/terminate" onsubmit="return confirm('Terminate {{ i.InstanceId }}?');">
+              <input type="hidden" name="instance_id" value="{{ i.InstanceId }}" />
+              <button type="submit">Terminate</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </body>
+  </html>
+
+
+
+
+

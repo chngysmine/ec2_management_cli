@@ -1,0 +1,3 @@
+[console_scripts]
+ec2-man = ec2_manager.cli:main_cli
+ec2-man-web = ec2_manager.web_flask:run

@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EC2 Management Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    * { font-family: 'Inter', sans-serif; }
+    
+    body {
+      background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    #bg-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      opacity: 0.4;
+    }
+    
+    .glass {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    .glow-green {
+      box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+    }
+    
+    .glow-red {
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+    }
+    
+    .btn-secondary {
+      background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+      transition: all 0.3s ease;
+    }
+    
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+    }
+    
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      transition: all 0.3s ease;
+    }
+    
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+    }
+    
+    /* MacBook Terminal Style */
+    .terminal-window {
+      background: #1e1e1e;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .terminal-header {
+      background: linear-gradient(180deg, #3a3a3a 0%, #2d2d2d 100%);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #1a1a1a;
+      flex-shrink: 0;
+    }
+    
+    .terminal-dots {
+      display: flex;
+      gap: 6px;
+      margin-right: 12px;
+    }
+    
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    
+    .dot.red {
+      background: #ff5f56;
+      border: 1px solid #e0443e;
+    }
+    
+    .dot.yellow {
+      background: #ffbd2e;
+      border: 1px solid #dea123;
+    }
+    
+    .dot.green {
+      background: #27c93f;
+      border: 1px solid #1aab29;
+    }
+    
+    .terminal-title {
+      color: #b8b8b8;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    
+    .terminal-body {
+      background: #1e1e1e;
+      padding: 16px;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #d4d4d4;
+      overflow-y: auto;
+      flex: 1;
+    }
+    
+    .terminal-output {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .terminal-prompt {
+      color: #4ec9b0;
+      font-weight: 600;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .nav-link {
+      position: relative;
+      transition: all 0.3s ease;
+      font-size: 14px;
+    }
+    
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      transition: width 0.3s ease;
+    }
+    
+    .nav-link:hover::after {
+      width: 100%;
+    }
+    
+    .status-dot {
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    
+    .card-hover:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(78, 201, 176, 0.3);
+      border-radius: 50%;
+      border-top-color: #4ec9b0;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      border-color: rgba(59, 130, 246, 0.5);
+      transform: scale(1.02);
+    }
+
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: #2d2d2d;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #4a4a4a;
+      border-radius: 4px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+      background: #5a5a5a;
+    }
+  </style>
+</head>
+<body class="text-gray-100">
+  <canvas id="bg-canvas"></canvas>
+  
+  <div class="relative z-10 h-screen flex flex-col">
+    <!-- Header -->
+    <header class="glass border-b border-gray-700 flex-shrink-0">
+      <div class="max-w-full px-6 py-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path>
+              </svg>
+            </div>
+            <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              EC2 Management Dashboard
+            </h1>
+          </div>
+          
+          <nav class="hidden md:flex space-x-6">
+            <a href="/instances" class="nav-link text-gray-300 hover:text-white">Instances</a>
+            <a href="/volumes" class="nav-link text-gray-300 hover:text-white">Volumes</a>
+            <a href="/reports/inventory" class="nav-link text-gray-300 hover:text-white">Inventory</a>
+            <a href="/reports/cost-optimize" class="nav-link text-gray-300 hover:text-white">Cost Analysis</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-hidden px-6 py-4">
+      <div class="h-full max-w-full mx-auto flex flex-col gap-4">
+        <!-- Stats + Inputs Row -->
+        <div class="grid grid-cols-5 gap-4">
+          <!-- Stats -->
+          <div class="stat-card rounded-lg p-3 card-hover">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-400 text-xs font-medium mb-0.5">Active</p>
+                <p class="text-2xl font-bold text-blue-400" id="statInstances">--</p>
+              </div>
+              <div class="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="stat-card rounded-lg p-3 card-hover">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-400 text-xs font-medium mb-0.5">Region</p>
+                <p class="text-2xl font-bold text-green-400" id="statRegion">--</p>
+              </div>
+              <div class="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="stat-card rounded-lg p-3 card-hover">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-400 text-xs font-medium mb-0.5">Status</p>
+                <p class="text-2xl font-bold text-purple-400">Ready</p>
+              </div>
+              <div class="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                <div class="flex space-x-1">
+                  <span class="status-dot w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
+                  <span class="status-dot w-1.5 h-1.5 bg-purple-400 rounded-full" style="animation-delay: 0.2s"></span>
+                  <span class="status-dot w-1.5 h-1.5 bg-purple-400 rounded-full" style="animation-delay: 0.4s"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Input Fields -->
+          <div class="glass rounded-lg p-3">
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">AWS Region</label>
+            <input 
+              id="region" 
+              type="text" 
+              placeholder="us-east-1" 
+              class="w-full bg-gray-900/70 border border-gray-700 rounded-md px-3 py-2 text-sm text-white placeholder-gray-500 transition focus:border-blue-500"
+              onchange="updateRegion()"
+            />
+          </div>
+
+          <div class="glass rounded-lg p-3">
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Instance ID</label>
+            <input 
+              id="instanceId" 
+              type="text" 
+              placeholder="i-0123456..." 
+              class="w-full bg-gray-900/70 border border-gray-700 rounded-md px-3 py-2 text-sm text-white placeholder-gray-500 transition focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        <!-- Main Control Panel -->
+        <div class="flex-1 grid grid-cols-7 gap-4 min-h-0">
+          <!-- Left: Actions -->
+          <div class="glass rounded-xl p-4 card-hover">
+            <h3 class="text-sm font-semibold mb-3 flex items-center">
+              <svg class="w-4 h-4 mr-1.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+              Actions
+            </h3>
+            <div class="space-y-2.5">
+              <button onclick="runList()" class="btn-primary w-full py-2.5 px-3 rounded-lg text-white font-medium flex items-center justify-center space-x-2 text-xs">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+                <span>List</span>
+              </button>
+              <button onclick="reportInventory()" class="btn-primary w-full py-2.5 px-3 rounded-lg text-white font-medium flex items-center justify-center space-x-2 text-xs">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <span>Inventory</span>
+              </button>
+              <button onclick="reportCost()" class="btn-primary w-full py-2.5 px-3 rounded-lg text-white font-medium flex items-center justify-center space-x-2 text-xs">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Cost</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Center: MacBook Terminal (5 columns) -->
+          <div class="col-span-5 h-full">
+            <div class="terminal-window h-full">
+              <div class="terminal-header">
+                <div class="terminal-dots">
+                  <span class="dot red"></span>
+                  <span class="dot yellow"></span>
+                  <span class="dot green"></span>
+                </div>
+                <div class="terminal-title">ec2-cli — bash — 80×24</div>
+              </div>
+              <div class="terminal-body scrollbar-thin">
+                <div id="output" class="terminal-output">
+<span class="terminal-prompt">➜</span> <span style="color: #569cd6;">~</span> Ready. Awaiting commands...
+<span class="terminal-prompt">➜</span> <span style="color: #569cd6;">~</span> <span style="color: #6a9955;">// Enter region and instance ID above</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Controls -->
+          <div class="glass rounded-xl p-4 card-hover">
+            <h3 class="text-sm font-semibold mb-3 flex items-center">
+              <svg class="w-4 h-4 mr-1.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+              </svg>
+              Controls
+            </h3>
+            <div class="space-y-2.5">
+              <button onclick="startInst()" class="btn-secondary glow-green w-full py-2.5 px-3 rounded-lg text-white font-medium flex items-center justify-center space-x-2 text-xs">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Start</span>
+              </button>
+              <button onclick="stopInst()" class="btn-secondary w-full py-2.5 px-3 rounded-lg text-white font-medium flex items-center justify-center space-x-2 text-xs">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                </svg>
+                <span>Stop</span>
+              </button>
+              <button onclick="terminateInst()" class="btn-danger glow-red w-full py-2.5 px-3 rounded-lg text-white font-medium flex items-center justify-center space-x-2 text-xs">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                <span>Terminate</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Three.js Background Animation
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg-canvas'), alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.position.z = 50;
+
+    const geometry = new THREE.BufferGeometry();
+    const vertices = [];
+    for (let i = 0; i < 2000; i++) {
+      vertices.push(
+        Math.random() * 200 - 100,
+        Math.random() * 200 - 100,
+        Math.random() * 200 - 100
+      );
+    }
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    const material = new THREE.PointsMaterial({ color: 0x3b82f6, size: 0.5 });
+    const particles = new THREE.Points(geometry, material);
+    scene.add(particles);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      particles.rotation.x += 0.0002;
+      particles.rotation.y += 0.0003;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // API Functions
+    function apiBase() {
+      const url = new URL(window.location.href);
+      const region = document.getElementById('region').value || url.searchParams.get('region') || '';
+      return { base: '', region: region };
+    }
+
+    function updateRegion() {
+      const region = document.getElementById('region').value || 'Not Set';
+      document.getElementById('statRegion').textContent = region.length > 10 ? region.substring(0, 8) + '..' : region;
+    }
+
+    async function callApi(path, opts = {}) {
+      const output = document.getElementById('output');
+      output.innerHTML = '<div class="flex items-center"><div class="loading mr-2"></div><span style="color: #ce9178;">Processing...</span></div>';
+      
+      const { region } = apiBase();
+      const sep = path.includes('?') ? '&' : '?';
+      const url = path + (region ? `${sep}region=${encodeURIComponent(region)}` : '');
+      
+      try {
+        const res = await fetch(url, opts);
+        const text = await res.text();
+        let result;
+        try { 
+          result = { status: res.status, json: JSON.parse(text) }; 
+        } catch { 
+          result = { status: res.status, text }; 
+        }
+        return result;
+      } catch (error) {
+        return { status: 0, text: `Error: ${error.message}` };
+      }
+    }
+
+    function show(out) {
+      const el = document.getElementById('output');
+      const formatted = typeof out === 'string' ? out : JSON.stringify(out, null, 2);
+      const escaped = escapeHtml(formatted);
+      el.innerHTML = `<span class="terminal-prompt">➜</span> <span style="color: #569cd6;">~</span> <span style="color: #d4d4d4;">${escaped}</span>`;
+      
+      if (out && out.instances) {
+        document.getElementById('statInstances').textContent = out.instances.length;
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function runList() {
+      const r = await callApi('/api/instances');
+      show(r.json ?? r.text);
+    }
+
+    async function startInst() {
+      const id = document.getElementById('instanceId').value;
+      if (!id) return show('❌ Missing Instance ID');
+      const r = await callApi('/api/instances/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instance_id: id })
+      });
+      show(r.json ?? r.text);
+    }
+
+    async function stopInst() {
+      const id = document.getElementById('instanceId').value;
+      if (!id) return show('❌ Missing Instance ID');
+      const r = await callApi('/api/instances/stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instance_id: id })
+      });
+      show(r.json ?? r.text);
+    }
+
+    async function terminateInst() {
+      const id = document.getElementById('instanceId').value;
+      if (!id) return show('❌ Missing Instance ID');
+      if (!confirm('⚠️ Are you sure you want to terminate this instance? This action cannot be undone!')) return;
+      const r = await callApi('/api/instances/terminate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instance_id: id })
+      });
+      show(r.json ?? r.text);
+    }
+
+    async function reportInventory() {
+      const r = await callApi('/api/reports/inventory');
+      show(r.json ?? r.text);
+    }
+
+    async function reportCost() {
+      const r = await callApi('/api/reports/cost-optimize');
+      show(r.json ?? r.text);
+    }
+
+    // Initialize
+    updateRegion();
+  </script>
+</body>
+</html>
