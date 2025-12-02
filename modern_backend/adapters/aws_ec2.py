@@ -29,7 +29,7 @@ class AwsEC2Adapter(AbstractEC2Repository):
             return self._mgr.list_instances(tags_filter=None, states=None)
 
         raw = await anyio.to_thread.run_sync(_call)
-        return [Instance.parse_obj(item) for item in raw]
+        return [Instance.model_validate(item) for item in raw]
 
     async def start_instance(self, instance_id: str) -> Instance:
         def _call() -> dict:
@@ -98,7 +98,7 @@ class AwsEC2Adapter(AbstractEC2Repository):
             return self._mgr.list_volumes(status_filter=None)
 
         raw = await anyio.to_thread.run_sync(_call)
-        return [Volume.parse_obj(item) for item in raw]
+        return [Volume.model_validate(item) for item in raw]
 
     async def create_volume(self, size_gib: int, az: Optional[str] = None) -> Volume:
         def _call() -> dict:
@@ -117,7 +117,7 @@ class AwsEC2Adapter(AbstractEC2Repository):
             }
 
         data = await anyio.to_thread.run_sync(_call)
-        return Volume.parse_obj(data)
+        return Volume.model_validate(data)
 
     async def attach_volume(self, volume_id: str, instance_id: str, device_name: str) -> dict:
         def _call() -> dict:

@@ -3,35 +3,89 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 47.4% 11.2%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 47.4% 11.2%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 47.4% 11.2%;
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
+  /* Terminal Theme - Soft Dark Palette (theo báo cáo) */
+  --background: 240 10% 3.9%; /* #09090b - Deep Background */
+  --foreground: 240 5% 84%; /* #e4e4e7 - Primary Text (~87% opacity) */
+  --card: 240 5.9% 10%; /* #18181b - Surface (Card) */
+  --card-foreground: 240 5% 84%;
+  --popover: 240 5.9% 10%;
+  --popover-foreground: 240 5% 84%;
+  --primary: 221.2 83.2% 53.3%; /* Blue accent */
+  --primary-foreground: 240 5% 84%;
+  --secondary: 240 3.7% 15.9%; /* #27272a - Border (Subtle) */
+  --secondary-foreground: 240 5% 84%;
+  --muted: 240 3.8% 65%; /* #a1a1aa - Muted Text */
+  --muted-foreground: 240 3.8% 65%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 240 5% 84%;
+  --destructive: 0 84% 60%; /* #ef4444 - Alert Red */
+  --destructive-foreground: 240 5% 84%;
+  --border: 240 3.7% 15.9%; /* #27272a */
+  --input: 240 3.7% 15.9%;
   --ring: 221.2 83.2% 53.3%;
-  --radius: 0.5rem;
+  --radius: 0rem; /* Square corners - Terminal aesthetic */
+  
+  /* Terminal-specific colors */
+  --terminal-green: 142 71% 58%; /* #4ade80 - Success states */
+  --terminal-amber: 43 96% 56%; /* Amber for warnings */
 }
 
 * {
-  @apply border-border;
+  border-color: hsl(var(--border));
 }
 
 body {
-  @apply bg-background text-foreground;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
   font-feature-settings: "rlig" 1, "calt" 1;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* CRT Scanline Effect - Subtle overlay */
+@layer utilities {
+  .crt-scanlines {
+    position: relative;
+  }
+  
+  .crt-scanlines::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.03) 0px,
+      transparent 1px,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 3px
+    );
+    z-index: 9999;
+    mix-blend-mode: overlay;
+  }
+  
+  /* Respect prefers-reduced-motion */
+  @media (prefers-reduced-motion: reduce) {
+    .crt-scanlines::before {
+      display: none;
+    }
+  }
+  
+  /* Grid Pattern Background */
+  .grid-pattern {
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  
+  /* Dot Pattern Background */
+  .dot-pattern {
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
 }
 
 .bg-terminal {
@@ -132,8 +186,7 @@ body {
 }
 
 .btn-secondary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+  box-shadow: none;
 }
 
 .btn-danger {
@@ -142,8 +195,44 @@ body {
 }
 
 .btn-danger:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+  box-shadow: none;
+}
+
+/* Table responsive - prevent horizontal scroll */
+table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table th,
+table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+table th.whitespace-nowrap,
+table td.whitespace-nowrap {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* Ensure table container doesn't create horizontal scroll */
+.w-full {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Prevent horizontal overflow in table containers */
+.rounded-xl.border {
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Smooth expandable row animation */
+tr[data-expanded="true"] {
+  transition: all 0.2s ease-in-out;
 }
 
 

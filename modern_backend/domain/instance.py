@@ -29,9 +29,10 @@ class Instance(BaseModel):
     name_tag: Optional[str] = Field(None, alias="NameTag")
     launch_time: Optional[datetime] = Field(None, alias="LaunchTime")
 
-    class Config:
-        allow_population_by_field_name = True
-        anystr_strip_whitespace = True
+    model_config = {
+        "populate_by_name": True,
+        "str_strip_whitespace": True,
+    }
 
 
 class UnitEconomicsPoint(BaseModel):

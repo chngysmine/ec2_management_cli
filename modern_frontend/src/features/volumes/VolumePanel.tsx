@@ -1,3 +1,4 @@
+import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Link2, Plus, Unplug } from "lucide-react";
 import { Button } from "../../components/ui/button";
@@ -36,6 +37,39 @@ export function VolumePanel({ volumes, isLoading, error, selectedInstance }: Pro
   const canAttach = (vol: VolumeDto) => selectedInstance && vol.state === "available";
   const canDetach = (vol: VolumeDto) => vol.state === "in-use";
 
+  const renderActions = (vol: VolumeDto) => (
+    <div className="flex flex-row gap-2 py-2.5 px-5 border-b border-white/10">
+      <Button
+        size="sm"
+        variant="secondary"
+        className="btn-secondary text-[11px] px-2.5 py-1 h-7 flex-1 border border-transparent hover:border-white/40 hover:brightness-110 hover:scale-[1.02] hover:shadow-none transition-all"
+        disabled={!canAttach(vol) || attachMutation.isPending}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!selectedInstance) {
+            alert("Select an instance to attach this volume.");
+            return;
+          }
+          attachMutation.mutate({ volumeId: vol.volume_id, instanceId: selectedInstance.instance_id });
+        }}
+      >
+        <Link2 className="mr-1 h-3 w-3" /> Attach
+      </Button>
+      <Button
+        size="sm"
+        variant="destructive"
+        className="btn-danger text-[11px] px-2.5 py-1 h-7 flex-1 border border-transparent hover:border-white/40 hover:brightness-110 hover:scale-[1.02] hover:shadow-none transition-all"
+        disabled={!canDetach(vol) || detachMutation.isPending}
+        onClick={(e) => {
+          e.stopPropagation();
+          detachMutation.mutate(vol.volume_id);
+        }}
+      >
+        <Unplug className="mr-1 h-3 w-3" /> Detach
+      </Button>
+    </div>
+  );
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -45,7 +79,7 @@ export function VolumePanel({ volumes, isLoading, error, selectedInstance }: Pro
             Quota-aware mock volumes {selectedInstance ? `(selected: ${selectedInstance.instance_id})` : ""}
           </p>
         </div>
-        <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} className="btn-secondary">
+        <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} className="btn-secondary border border-transparent hover:border-white/40 hover:brightness-110 hover:scale-[1.02] hover:shadow-none transition-all">
           <Plus className="mr-2 h-4 w-4" /> New volume
         </Button>
       </CardHeader>
@@ -69,70 +103,56 @@ export function VolumePanel({ volumes, isLoading, error, selectedInstance }: Pro
           </div>
         )}
 
-        <div className="rounded-xl border border-white/10 bg-black/20">
+        <div className="rounded-xl border border-white/10 bg-black/20 w-full overflow-hidden shadow-lg">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead>State</TableHead>
-                <TableHead>AZ</TableHead>
-                <TableHead>Attached</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="w-[20%] text-center">ID</TableHead>
+                <TableHead className="w-[12%] text-center">Size</TableHead>
+                <TableHead className="w-[20%] text-center">State</TableHead>
+                <TableHead className="w-[20%] text-center">AZ</TableHead>
+                <TableHead className="w-[28%] text-center">Attached</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center">
+                  <TableCell colSpan={5} className="text-center">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : volumes && volumes.length > 0 ? (
                 volumes.map((vol) => (
-                  <TableRow key={vol.volume_id ?? `vol-${vol.size_gib}-${vol.state}`}>
-                    <TableCell className="font-mono text-xs">{vol.volume_id ?? "-"}</TableCell>
-                    <TableCell>{vol.size_gib} GiB</TableCell>
-                    <TableCell>
-                      <Badge variant={vol.state === "available" ? "outline" : "secondary"}>{vol.state}</Badge>
-                    </TableCell>
-                    <TableCell>{vol.availability_zone ?? "-"}</TableCell>
-                    <TableCell>
-                      {(vol.attached_instances ?? []).length > 0 ? vol.attached_instances!.join(", ") : "None"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="btn-secondary"
-                          disabled={!canAttach(vol) || attachMutation.isPending}
-                          onClick={() => {
-                            if (!selectedInstance) {
-                              alert("Select an instance to attach this volume.");
-                              return;
-                            }
-                            attachMutation.mutate({ volumeId: vol.volume_id, instanceId: selectedInstance.instance_id });
-                          }}
-                        >
-                          <Link2 className="mr-1 h-3.5 w-3.5" /> Attach
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="btn-danger"
-                          disabled={!canDetach(vol) || detachMutation.isPending}
-                          onClick={() => detachMutation.mutate(vol.volume_id)}
-                        >
-                          <Unplug className="mr-1 h-3.5 w-3.5" /> Detach
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <React.Fragment key={vol.volume_id ?? `vol-${vol.size_gib}-${vol.state}`}>
+                    <TableRow 
+                      className="bg-black/10 hover:bg-black/20 transition-colors"
+                    >
+                      <TableCell className="font-mono whitespace-nowrap text-center" title={vol.volume_id ?? "-"}>
+                        {vol.volume_id ?? "-"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-center">{vol.size_gib} GiB</TableCell>
+                      <TableCell className="whitespace-nowrap text-center">
+                        <Badge variant={vol.state === "available" ? "outline" : "secondary"} className="text-xs px-3 py-1 whitespace-nowrap">
+                          {vol.state}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-center pl-4">{vol.availability_zone ?? "-"}</TableCell>
+                      <TableCell className="whitespace-nowrap font-mono text-center" title={(vol.attached_instances ?? []).length > 0 ? vol.attached_instances!.join(", ") : "None"}>
+                        {(vol.attached_instances ?? []).length > 0 ? vol.attached_instances!.join(", ") : "None"}
+                      </TableCell>
+                    </TableRow>
+                    {vol.volume_id && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="p-0">
+                          {renderActions(vol)}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center">
+                  <TableCell colSpan={5} className="text-center">
                     No volumes
                   </TableCell>
                 </TableRow>
