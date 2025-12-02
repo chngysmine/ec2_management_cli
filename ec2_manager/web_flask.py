@@ -81,17 +81,17 @@ def handle_general_error(e: Exception):
     return render_template("error.html", message="Internal error: " + str(e)), 500
 
 
-@app.get("/")
+@app.route("/")
 def home():
     return render_template("home.html")
 
 
-@app.get("/favicon.ico")
+@app.route("/favicon.ico")
 def favicon():
     return ("", 204)
 
 
-@app.get("/instances")
+@app.route("/instances", methods=["GET"])
 def instances_page():
     mgr = get_manager()
     state = request.args.get("state")
@@ -100,7 +100,7 @@ def instances_page():
     return render_template("instances.html", instances=data)
 
 
-@app.post("/instances/stop")
+@app.route("/instances/stop", methods=["POST"])
 def stop_instance():
     mgr = get_manager()
     instance_id = request.form["instance_id"]
@@ -108,7 +108,7 @@ def stop_instance():
     return redirect(url_for("instances_page"))
 
 
-@app.post("/instances/start")
+@app.route("/instances/start", methods=["POST"])
 def start_instance():
     mgr = get_manager()
     instance_id = request.form["instance_id"]
@@ -116,7 +116,7 @@ def start_instance():
     return redirect(url_for("instances_page"))
 
 
-@app.post("/instances/terminate")
+@app.route("/instances/terminate", methods=["POST"])
 def terminate_instance():
     mgr = get_manager()
     instance_id = request.form["instance_id"]
@@ -124,15 +124,17 @@ def terminate_instance():
     return redirect(url_for("instances_page"))
 
 
-@app.get("/volumes")
+@app.route("/volumes", methods=["GET"])
 def volumes_page():
     mgr = get_manager()
     status = request.args.get("status")
     vols = mgr.list_volumes(status_filter=status)
-    return render_template("volumes.html", volumes=vols)
+    # Get list of running instances for attach dropdown
+    instances = mgr.list_instances(states=["running"])
+    return render_template("volumes.html", volumes=vols, instances=instances)
 
 
-@app.post("/volumes/set-delete-on-term")
+@app.route("/volumes/set-delete-on-term", methods=["POST"])
 def set_delete_on_term():
     mgr = get_manager()
     instance_id = request.form["instance_id"]
@@ -142,7 +144,26 @@ def set_delete_on_term():
     return redirect(url_for("volumes_page"))
 
 
-@app.get("/reports/inventory")
+@app.route("/volumes/attach", methods=["POST"])
+def attach_volume():
+    mgr = get_manager()
+    volume_id = request.form["volume_id"]
+    instance_id = request.form["instance_id"]
+    device_name = request.form["device_name"]
+    mgr.attach_volume(volume_id, instance_id, device_name)
+    return redirect(url_for("volumes_page"))
+
+
+@app.route("/volumes/detach", methods=["POST"])
+def detach_volume():
+    mgr = get_manager()
+    volume_id = request.form["volume_id"]
+    force = request.form.get("force", "false").lower() in {"1", "true", "yes", "on"}
+    mgr.detach_volume(volume_id, force=force)
+    return redirect(url_for("volumes_page"))
+
+
+@app.route("/reports/inventory", methods=["GET"])
 def report_inventory():
     mgr = get_manager()
     regions = request.args.get("regions")
@@ -151,7 +172,7 @@ def report_inventory():
     return render_template("inventory.html", rows=data)
 
 
-@app.get("/reports/cost-optimize")
+@app.route("/reports/cost-optimize", methods=["GET"])
 def report_cost():
     mgr = get_manager()
     regions = request.args.get("regions")
@@ -167,7 +188,7 @@ def run():
 
 
 # -------- JSON API for Terminal UI --------
-@app.get("/api/instances")
+@app.route("/api/instances", methods=["GET"])
 def api_instances():
     mgr = get_manager()
     state = request.args.get("state")
@@ -176,7 +197,7 @@ def api_instances():
     return jsonify(data)
 
 
-@app.post("/api/instances/start")
+@app.route("/api/instances/start", methods=["POST"])
 def api_start_instance():
     mgr = get_manager()
     instance_id = request.json.get("instance_id") if request.is_json else request.form.get("instance_id")
@@ -186,7 +207,7 @@ def api_start_instance():
     return jsonify(result)
 
 
-@app.post("/api/instances/stop")
+@app.route("/api/instances/stop", methods=["POST"])
 def api_stop_instance():
     mgr = get_manager()
     instance_id = request.json.get("instance_id") if request.is_json else request.form.get("instance_id")
@@ -196,7 +217,7 @@ def api_stop_instance():
     return jsonify(result)
 
 
-@app.post("/api/instances/terminate")
+@app.route("/api/instances/terminate", methods=["POST"])
 def api_terminate_instance():
     mgr = get_manager()
     instance_id = request.json.get("instance_id") if request.is_json else request.form.get("instance_id")
@@ -206,7 +227,7 @@ def api_terminate_instance():
     return jsonify(result)
 
 
-@app.get("/api/reports/inventory")
+@app.route("/api/reports/inventory", methods=["GET"])
 def api_report_inventory():
     mgr = get_manager()
     regions = request.args.get("regions")
@@ -215,7 +236,7 @@ def api_report_inventory():
     return jsonify(data)
 
 
-@app.get("/api/reports/cost-optimize")
+@app.route("/api/reports/cost-optimize", methods=["GET"])
 def api_report_cost():
     mgr = get_manager()
     regions = request.args.get("regions")

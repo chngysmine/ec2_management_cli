@@ -8,7 +8,10 @@
       table { border-collapse: collapse; width: 100%; }
       th, td { border: 1px solid #ddd; padding: 8px; }
       th { background: #f5f5f5; text-align: left; }
-      form { display: inline; }
+      form { display: inline; margin-right: 6px; }
+      .actions { white-space: nowrap; }
+      .attach-form { display: inline-block; margin-top: 8px; padding: 8px; background: #f9f9f9; border: 1px solid #ddd; }
+      input, select { margin: 2px; padding: 4px; }
     </style>
   </head>
   <body>
@@ -25,6 +28,7 @@
           <th>Throughput</th>
           <th>AZ</th>
           <th>AttachedInstances</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -37,13 +41,37 @@
           <td>{{ v.Iops }}</td>
           <td>{{ v.Throughput }}</td>
           <td>{{ v.AvailabilityZone }}</td>
-          <td>{{ ', '.join(v.AttachedInstances) }}</td>
+          <td>{{ ', '.join(v.AttachedInstances) if v.AttachedInstances else 'None' }}</td>
+          <td class="actions">
+            {% if v.State == 'available' %}
+            <div class="attach-form">
+              <form method="post" action="/volumes/attach" style="display: inline-block;">
+                <input type="hidden" name="volume_id" value="{{ v.VolumeId }}" />
+                <select name="instance_id" required>
+                  <option value="">Select Instance</option>
+                  {% for inst in instances %}
+                  <option value="{{ inst.InstanceId }}">{{ inst.InstanceId }} ({{ inst.NameTag or 'No Name' }})</option>
+                  {% endfor %}
+                </select>
+                <input type="text" name="device_name" placeholder="/dev/sdf" required style="width: 100px;" />
+                <button type="submit">Attach</button>
+              </form>
+            </div>
+            {% elif v.State == 'in-use' %}
+            <form method="post" action="/volumes/detach" onsubmit="return confirm('Detach volume {{ v.VolumeId }}?');">
+              <input type="hidden" name="volume_id" value="{{ v.VolumeId }}" />
+              <button type="submit">Detach</button>
+            </form>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </body>
   </html>
+
+
 
 
 

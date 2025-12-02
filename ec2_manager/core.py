@@ -31,12 +31,48 @@ class EC2Manager:
                 if profile
                 else boto3_session.Session(region_name=region_name)
             )
-            self.ec2_client = session.client("ec2", config=DEFAULT_BOTO_CONFIG)
-            self.ec2_res = session.resource("ec2", config=DEFAULT_BOTO_CONFIG)
-            self.cw_client = session.client("cloudwatch", config=DEFAULT_BOTO_CONFIG)
-            self.sts_client = session.client("sts", config=DEFAULT_BOTO_CONFIG)
+            
+            # Support LocalStack for local development (no AWS account needed)
+            localstack_endpoint = os.getenv("LOCALSTACK_ENDPOINT", os.getenv("AWS_ENDPOINT_URL"))
+            use_localstack = localstack_endpoint is not None
+            
+            # Default region for LocalStack
+            if use_localstack and not region_name:
+                region_name = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
+            
+            # Configure endpoint URL for LocalStack
+            endpoint_kwargs = {}
+            if use_localstack:
+                endpoint_kwargs["endpoint_url"] = localstack_endpoint
+            
+            # Use dummy credentials for LocalStack
+            if use_localstack:
+                os.environ.setdefault("AWS_ACCESS_KEY_ID", "test")
+                os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "test")
+            
+            self.ec2_client = session.client("ec2", config=DEFAULT_BOTO_CONFIG, **endpoint_kwargs)
+            self.ec2_res = session.resource("ec2", config=DEFAULT_BOTO_CONFIG, **endpoint_kwargs)
+            self.cw_client = session.client("cloudwatch", config=DEFAULT_BOTO_CONFIG, **endpoint_kwargs)
+            self.sts_client = session.client("sts", config=DEFAULT_BOTO_CONFIG, **endpoint_kwargs)
+            self.use_localstack = use_localstack
         except (NoCredentialsError, PartialCredentialsError) as e:
-            raise AWSAuthError("AWS credentials not found. Use IAM roles or SSO profiles.") from e
+            # For LocalStack, we use dummy credentials, so skip this error
+            if use_localstack:
+                # Retry with dummy credentials for LocalStack
+                os.environ.setdefault("AWS_ACCESS_KEY_ID", "test")
+                os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "test")
+                session = boto3_session.Session(
+                    aws_access_key_id="test",
+                    aws_secret_access_key="test",
+                    region_name=region_name or "us-east-1"
+                )
+                self.ec2_client = session.client("ec2", config=DEFAULT_BOTO_CONFIG, endpoint_url=localstack_endpoint)
+                self.ec2_res = session.resource("ec2", config=DEFAULT_BOTO_CONFIG, endpoint_url=localstack_endpoint)
+                self.cw_client = session.client("cloudwatch", config=DEFAULT_BOTO_CONFIG, endpoint_url=localstack_endpoint)
+                self.sts_client = session.client("sts", config=DEFAULT_BOTO_CONFIG, endpoint_url=localstack_endpoint)
+                self.use_localstack = True
+            else:
+                raise AWSAuthError("AWS credentials not found. Use IAM roles or SSO profiles.") from e
 
     # ---------- Instance operations ----------
     def list_instances(self, tags_filter: Optional[List[Tuple[str, str]]] = None, states: Optional[List[str]] = None) -> List[Dict[str, Any]]:
@@ -248,7 +284,7 @@ class EC2Manager:
                 BlockDeviceMappings=[
                     {
                         "DeviceName": device_name,
-                        "Ebs": {"DeleteOnTermination": {"Value": delete_on_term}},
+                        "Ebs": {"DeleteOnTermination": delete_on_term},
                     }
                 ],
             )
@@ -270,6 +306,9 @@ class EC2Manager:
     def generate_inventory_report(self, regions: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         target_regions = regions or self._all_regions()
         results: List[Dict[str, Any]] = []
+        localstack_endpoint = os.getenv("LOCALSTACK_ENDPOINT", os.getenv("AWS_ENDPOINT_URL"))
+        use_localstack = localstack_endpoint is not None
+        
         for region in target_regions:
             try:
                 profile = os.getenv("AWS_PROFILE") or os.getenv("AWS_DEFAULT_PROFILE")
@@ -278,7 +317,10 @@ class EC2Manager:
                     if profile
                     else boto3_session.Session(region_name=region)
                 )
-                ec2 = session.client("ec2", config=DEFAULT_BOTO_CONFIG)
+                endpoint_kwargs = {}
+                if use_localstack:
+                    endpoint_kwargs["endpoint_url"] = localstack_endpoint
+                ec2 = session.client("ec2", config=DEFAULT_BOTO_CONFIG, **endpoint_kwargs)
             except (NoCredentialsError, PartialCredentialsError) as e:
                 raise AWSAuthError("Unable to locate credentials. Check AWS_PROFILE/SSO.") from e
             paginator = ec2.get_paginator("describe_instances")
@@ -330,6 +372,8 @@ class EC2Manager:
     def find_wasteful_resources(self, regions: Optional[List[str]] = None, idle_cpu_threshold: float = 5.0) -> Dict[str, Any]:
         target_regions = regions or self._all_regions()
         report: Dict[str, Any] = {"idle_instances": [], "orphaned_volumes": []}
+        localstack_endpoint = os.getenv("LOCALSTACK_ENDPOINT", os.getenv("AWS_ENDPOINT_URL"))
+        use_localstack = localstack_endpoint is not None
 
         for region in target_regions:
             profile = os.getenv("AWS_PROFILE") or os.getenv("AWS_DEFAULT_PROFILE")
@@ -338,7 +382,10 @@ class EC2Manager:
                 if profile
                 else boto3_session.Session(region_name=region)
             )
-            ec2 = session.client("ec2", config=DEFAULT_BOTO_CONFIG)
+            endpoint_kwargs = {}
+            if use_localstack:
+                endpoint_kwargs["endpoint_url"] = localstack_endpoint
+            ec2 = session.client("ec2", config=DEFAULT_BOTO_CONFIG, **endpoint_kwargs)
             # Orphaned volumes
             vol_paginator = ec2.get_paginator("describe_volumes")
             for page in vol_paginator.paginate(Filters=[{"Name": "status", "Values": ["available"]}]):

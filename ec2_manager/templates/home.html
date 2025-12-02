@@ -504,15 +504,64 @@
       }
     }
 
+    function setInstanceId(instanceId) {
+      document.getElementById('instanceId').value = instanceId;
+      // Highlight the input field briefly
+      const input = document.getElementById('instanceId');
+      input.style.borderColor = '#3b82f6';
+      setTimeout(() => {
+        input.style.borderColor = '';
+      }, 1000);
+    }
+
     function show(out) {
       const el = document.getElementById('output');
-      const formatted = typeof out === 'string' ? out : JSON.stringify(out, null, 2);
-      const escaped = escapeHtml(formatted);
-      el.innerHTML = `<span class="terminal-prompt">➜</span> <span style="color: #569cd6;">~</span> <span style="color: #d4d4d4;">${escaped}</span>`;
+      let content = '';
       
-      if (out && out.instances) {
-        document.getElementById('statInstances').textContent = out.instances.length;
+      // If output is JSON array of instances, make it interactive
+      if (Array.isArray(out) && out.length > 0 && out[0].InstanceId) {
+        content = '<div style="margin-bottom: 10px;"><span class="terminal-prompt">➜</span> <span style="color: #569cd6;">~</span> <span style="color: #4ec9b0;">Found ' + out.length + ' instances</span></div>';
+        out.forEach((inst, idx) => {
+          const stateColor = inst.State === 'running' ? '#4ec9b0' : inst.State === 'stopped' ? '#ce9178' : '#d4d4d4';
+          content += '<div style="margin: 8px 0; padding: 8px; background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; border-radius: 4px;">';
+          content += '<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">';
+          content += '<span style="color: #569cd6; cursor: pointer; text-decoration: underline;" onclick="setInstanceId(\'' + inst.InstanceId + '\')" title="Click to select">' + escapeHtml(inst.InstanceId) + '</span>';
+          content += '<span style="color: ' + stateColor + ';">[' + escapeHtml(inst.State) + ']</span>';
+          if (inst.NameTag) {
+            content += '<span style="color: #d4d4d4;">' + escapeHtml(inst.NameTag) + '</span>';
+          }
+          content += '<span style="color: #ce9178; font-size: 11px;">' + escapeHtml(inst.InstanceType) + '</span>';
+          // Action buttons
+          content += '<div style="margin-left: auto; display: flex; gap: 4px;">';
+          if (inst.State === 'stopped') {
+            content += '<button onclick="setInstanceId(\'' + inst.InstanceId + '\'); startInst();" style="background: #22c55e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">Start</button>';
+          }
+          if (inst.State === 'running') {
+            content += '<button onclick="setInstanceId(\'' + inst.InstanceId + '\'); stopInst();" style="background: #f59e0b; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">Stop</button>';
+          }
+          content += '<button onclick="setInstanceId(\'' + inst.InstanceId + '\'); terminateInst();" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">Terminate</button>';
+          content += '</div>';
+          content += '</div>';
+          content += '</div>';
+        });
+        document.getElementById('statInstances').textContent = out.length;
+      } else {
+        // Regular JSON output
+        const formatted = typeof out === 'string' ? out : JSON.stringify(out, null, 2);
+        const escaped = escapeHtml(formatted);
+        content = `<span class="terminal-prompt">➜</span> <span style="color: #569cd6;">~</span> <span style="color: #d4d4d4;">${escaped}</span>`;
+        
+        // Try to extract instance count from JSON
+        if (typeof out === 'object' && out !== null) {
+          if (Array.isArray(out)) {
+            document.getElementById('statInstances').textContent = out.length;
+          } else if (out.instances) {
+            document.getElementById('statInstances').textContent = out.instances.length;
+          }
+        }
       }
+      
+      el.innerHTML = content;
     }
 
     function escapeHtml(text) {
@@ -523,41 +572,85 @@
 
     async function runList() {
       const r = await callApi('/api/instances');
-      show(r.json ?? r.text);
+      if (r.json && Array.isArray(r.json)) {
+        show(r.json);
+      } else {
+        show(r.json ?? r.text);
+      }
     }
 
     async function startInst() {
-      const id = document.getElementById('instanceId').value;
-      if (!id) return show('❌ Missing Instance ID');
+      const id = document.getElementById('instanceId').value.trim();
+      if (!id) {
+        show('❌ Missing Instance ID\n💡 Tip: Click on an instance ID in the list above, or type it manually');
+        return;
+      }
+      const output = document.getElementById('output');
+      output.innerHTML = '<div class="flex items-center"><div class="loading mr-2"></div><span style="color: #ce9178;">Starting instance ' + escapeHtml(id) + '...</span></div>';
+      
       const r = await callApi('/api/instances/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ instance_id: id })
       });
-      show(r.json ?? r.text);
+      
+      if (r.json && r.json.InstanceId) {
+        show('✅ Instance ' + r.json.InstanceId + ' started successfully!\nState: ' + (r.json.State || 'running'));
+        // Refresh list after 1 second
+        setTimeout(runList, 1000);
+      } else {
+        show(r.json ?? r.text);
+      }
     }
 
     async function stopInst() {
-      const id = document.getElementById('instanceId').value;
-      if (!id) return show('❌ Missing Instance ID');
+      const id = document.getElementById('instanceId').value.trim();
+      if (!id) {
+        show('❌ Missing Instance ID\n💡 Tip: Click on an instance ID in the list above, or type it manually');
+        return;
+      }
+      const output = document.getElementById('output');
+      output.innerHTML = '<div class="flex items-center"><div class="loading mr-2"></div><span style="color: #ce9178;">Stopping instance ' + escapeHtml(id) + '...</span></div>';
+      
       const r = await callApi('/api/instances/stop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ instance_id: id })
       });
-      show(r.json ?? r.text);
+      
+      if (r.json && r.json.InstanceId) {
+        show('✅ Instance ' + r.json.InstanceId + ' stopped successfully!\nState: ' + (r.json.State || 'stopped'));
+        // Refresh list after 1 second
+        setTimeout(runList, 1000);
+      } else {
+        show(r.json ?? r.text);
+      }
     }
 
     async function terminateInst() {
-      const id = document.getElementById('instanceId').value;
-      if (!id) return show('❌ Missing Instance ID');
-      if (!confirm('⚠️ Are you sure you want to terminate this instance? This action cannot be undone!')) return;
+      const id = document.getElementById('instanceId').value.trim();
+      if (!id) {
+        show('❌ Missing Instance ID\n💡 Tip: Click on an instance ID in the list above, or type it manually');
+        return;
+      }
+      if (!confirm('⚠️ Are you sure you want to terminate instance ' + id + '?\n\nThis action cannot be undone!')) return;
+      
+      const output = document.getElementById('output');
+      output.innerHTML = '<div class="flex items-center"><div class="loading mr-2"></div><span style="color: #ce9178;">Terminating instance ' + escapeHtml(id) + '...</span></div>';
+      
       const r = await callApi('/api/instances/terminate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ instance_id: id })
       });
-      show(r.json ?? r.text);
+      
+      if (r.json && r.json.InstanceId) {
+        show('✅ Instance ' + r.json.InstanceId + ' terminated successfully!\nState: ' + (r.json.State || 'terminated'));
+        // Refresh list after 1 second
+        setTimeout(runList, 1000);
+      } else {
+        show(r.json ?? r.text);
+      }
     }
 
     async function reportInventory() {

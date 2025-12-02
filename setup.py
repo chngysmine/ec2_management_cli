@@ -10,11 +10,14 @@ setup(
         "boto3~=1.34.0",
         "click~=8.1.0",
         "PyYAML~=6.0",
+        "Flask~=3.0.0",
+        "Jinja2~=3.1.0",
     ],
     python_requires=">=3.11",
     entry_points={
         "console_scripts": [
             "ec2-man=ec2_manager.cli:main_cli",
+            "ec2-man-web=ec2_manager.web_flask:run",
         ]
     },
     include_package_data=True,
