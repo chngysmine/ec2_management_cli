@@ -52,6 +52,14 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        mono: ['ui-monospace', 'SFMono-Regular', '"SF Mono"', 'Menlo', 'Consolas', '"Liberation Mono"', 'monospace'],
+        'geist-mono': ['ui-monospace', 'SFMono-Regular', '"SF Mono"', 'Menlo', 'Consolas', 'monospace'],
+      },
+      colors: {
+        'terminal-green': 'hsl(var(--terminal-green))',
+        'terminal-amber': 'hsl(var(--terminal-amber))',
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -61,10 +69,30 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "scanline": {
+          "0%": { transform: "translateY(-100%)" },
+          "100%": { transform: "translateY(100vh)" },
+        },
+        "flicker": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.98" },
+        },
+        "typing": {
+          "0%": { width: "0" },
+          "100%": { width: "100%" },
+        },
+        "pulse-glow": {
+          "0%, 100%": { boxShadow: "0 0 5px rgba(74, 222, 128, 0.5)" },
+          "50%": { boxShadow: "0 0 20px rgba(74, 222, 128, 0.8)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "scanline": "scanline 8s linear infinite",
+        "flicker": "flicker 0.15s infinite",
+        "typing": "typing 3s steps(40) infinite",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
       },
     },
   },

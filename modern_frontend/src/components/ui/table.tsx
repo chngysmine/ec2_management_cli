@@ -4,8 +4,8 @@ import { cn } from "../../lib/utils";
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
-    <div className="w-full overflow-auto">
-      <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
+    <div className="w-full overflow-hidden">
+      <table ref={ref} className={cn("w-full caption-bottom text-sm table-fixed", className)} {...props} />
     </div>
   ),
 );
@@ -30,7 +30,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
     <tr
       ref={ref}
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+        "transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
         className,
       )}
       {...props}
@@ -44,7 +44,7 @@ const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<
     <th
       ref={ref}
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium text-muted-foreground",
+        "h-9 px-2 text-left align-middle font-semibold text-muted-foreground text-[11px] whitespace-nowrap uppercase tracking-wider",
         className,
       )}
       {...props}
@@ -57,7 +57,7 @@ const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<
   ({ className, ...props }, ref) => (
     <td
       ref={ref}
-      className={cn("p-2 align-middle text-sm text-muted-foreground", className)}
+      className={cn("p-1.5 align-middle text-[11px] text-muted-foreground", className)}
       {...props}
     />
   ),

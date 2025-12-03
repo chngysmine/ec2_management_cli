@@ -228,7 +228,7 @@ class MockEC2Adapter(AbstractEC2Repository):
                     v = {**v, "AttachedInstances": [instance_id]}
                 else:
                     v = {**v, "AttachedInstances": []}
-            normalized.append(Volume.parse_obj(v))
+            normalized.append(Volume.model_validate(v))
         return normalized
 
     async def create_volume(self, size_gib: int, az: Optional[str] = None) -> Volume:
@@ -247,7 +247,7 @@ class MockEC2Adapter(AbstractEC2Repository):
         _STORE.volumes[vol_id] = vol
         await asyncio.sleep(0.1)
         _STORE._record_event(EventLevel.info, "Created mock volume", {"volume_id": vol_id, "size": size_gib})
-        return Volume.parse_obj(vol)
+        return Volume.model_validate(vol)
 
     async def attach_volume(self, volume_id: str, instance_id: str, device_name: str) -> dict:
         vol = _STORE.volumes.get(volume_id)
